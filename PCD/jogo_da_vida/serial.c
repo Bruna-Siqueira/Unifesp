@@ -24,7 +24,7 @@ int **alocarMatriz()
 
 void inicializaBordas(int **matriz)
 {
-    int i, j = 1;
+    int i;
     //Inicializa canteiros
     matriz[0][0] = matriz[N - 2][N - 2];
     matriz[0][N - 1] = matriz[N - 2][1];
@@ -38,9 +38,8 @@ void inicializaBordas(int **matriz)
         matriz[i][N - 1] = matriz[i][1];
 
         //Inicializa bordas horizontais
-        matriz[0][j] = matriz[N - 2][j];
-        matriz[N - 1][j] = matriz[1][j];
-        j++;
+        matriz[0][i] = matriz[N - 2][i];
+        matriz[N - 1][i] = matriz[1][i];
     }
 }
 
