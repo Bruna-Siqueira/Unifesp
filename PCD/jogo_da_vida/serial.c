@@ -9,11 +9,8 @@
 
 int **alocarMatriz()
 {
-
     int i, j;
-
     int **matriz = (int **)malloc(N * sizeof(int *));
-
     for (i = 0; i < N; i++)
     {
         matriz[i] = (int *)malloc(N * sizeof(int));
@@ -27,35 +24,30 @@ int **alocarMatriz()
 
 void inicializaBordas(int **matriz)
 {
-    int i, j;
-
+    int i, j = 1;
     //Inicializa canteiros
     matriz[0][0] = matriz[N - 2][N - 2];
     matriz[0][N - 1] = matriz[N - 2][1];
     matriz[N - 1][0] = matriz[1][N - 2];
     matriz[N - 1][N - 1] = matriz[1][1];
 
-    //Inicializa bordas verticais
     for (i = 1; i < N - 1; i++)
     {
+        //Inicializa bordas verticais
         matriz[i][0] = matriz[i][N - 2];
         matriz[i][N - 1] = matriz[i][1];
-    }
 
-    //Inicializa bordas horizontais
-    for (j = 1; j < N - 1; j++)
-    {
+        //Inicializa bordas horizontais
         matriz[0][j] = matriz[N - 2][j];
         matriz[N - 1][j] = matriz[1][j];
+        j++;
     }
 }
 
 void iniciaTabuleiro(int **matriz)
 {
-
     int i, j;
     srand(SRAND_VALUE);
-
     for (i = 1; i < N - 1; i++)
     {
         for (j = 1; j < N - 1; j++)
@@ -66,75 +58,38 @@ void iniciaTabuleiro(int **matriz)
     inicializaBordas(matriz);
 }
 
-void iniciaMatriz(int **matriz)
-{
-    int i, j;
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            matriz[i][j] = 0;
-        }
-    }
-}
-
 int getNeighbors(int **grid, int i, int j)
 {
-
     int qtdVizinhos = grid[i - 1][j - 1] + grid[i - 1][j] + grid[i - 1][j + 1] + grid[i][j - 1] + grid[i][j + 1] + grid[i + 1][j - 1] + grid[i + 1][j] + grid[i + 1][j + 1];
-
     return qtdVizinhos;
 }
 
 void atualizaGrid(int **grid, int **newGrid)
 {
-
     int i, j;
-
     for (i = 0; i < N; i++)
     {
         for (j = 0; j < N; j++)
         {
             grid[i][j] = newGrid[i][j];
+            newGrid[i][j] = 0;
         }
     }
     inicializaBordas(grid);
-
-    iniciaMatriz(newGrid);
 }
 
 void proximaGeracao(int **grid, int **newGrid)
 {
-
     int i, j, vizinhos;
-
     for (i = 1; i < N - 1; i++)
     {
         for (j = 1; j < N - 1; j++)
         {
             vizinhos = getNeighbors(grid, i, j);
 
-            if (grid[i][j] == 1)
+            if ((grid[i][j] == 1 && vizinhos == 2) || vizinhos == 3)
             {
-
-                if (vizinhos < 2)
-                {
-                    newGrid[i][j] = 0;
-                }
-                else if (vizinhos > 3)
-                {
-                    newGrid[i][j] = 0;
-                }
-                else
-                {
-                    newGrid[i][j] = 1;
-                }
-            }
-
-            else
-            {
-                if (vizinhos == 3)
-                    newGrid[i][j] = 1;
+                newGrid[i][j] = 1;
             }
         }
     }
@@ -144,7 +99,6 @@ int qtdCelulasVivas(int **matriz)
 {
     int i, j, soma;
     soma = 0;
-
     for (i = 1; i < N - 1; i++)
     {
         for (j = 1; j < N - 1; j++)
@@ -158,7 +112,6 @@ int qtdCelulasVivas(int **matriz)
 void imprimeMatriz(int **matriz)
 {
     int i, j;
-
     for (i = 0; i < N; i++)
     {
         printf("\n");
@@ -195,7 +148,6 @@ int main(void)
 
     for (i = 0; i < 2000; i++)
     {
-
         proximaGeracao(grid, newGrid);
         atualizaGrid(grid, newGrid);
     }
