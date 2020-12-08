@@ -22,28 +22,10 @@ class RunThE implements Runnable {
 	        {
 	            vizinhos = JogoDaVida.getNeighbors(JogoDaVida.grid, i, j);
 
-	            if (JogoDaVida.grid[i][j] == 1)
-	            {
-
-	                if (vizinhos < 2)
-	                {
-	                	JogoDaVida.newGrid[i][j] = 0;
-	                }
-	                else if (vizinhos > 3)
-	                {
-	                	JogoDaVida.newGrid[i][j] = 0;
-	                }
-	                else
-	                {
-	                	JogoDaVida.newGrid[i][j] = 1;
-	                }
-	            }
-
-	            else
-	            {
-	                if (vizinhos == 3)
-	                	JogoDaVida.newGrid[i][j] = 1;
-	            }
+				if ((JogoDaVida.grid[i][j] == 1 && vizinhos == 2) || vizinhos == 3)
+            	{
+                	JogoDaVida.newGrid[i][j] = 1;
+            	}
 	        }
 	    }
 	    
