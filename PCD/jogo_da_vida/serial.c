@@ -4,7 +4,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-#define N 2050
+#define N 2050 // tabuleiro 2048x2048 + duas bordas adicionais para facilitar o cálculo da borda infinita
 #define SRAND_VALUE 1985
 
 int **alocarMatriz()
@@ -123,10 +123,12 @@ void imprimeMatriz(int **matriz)
 
 int main(void)
 {
-
     int **grid;
     int **newGrid;
     int i, qtd;
+    //clock_t start, end;
+    struct timeval inicio, final2;
+    int tmili;
 
     grid = alocarMatriz();
     newGrid = alocarMatriz();
@@ -136,12 +138,7 @@ int main(void)
     qtd = qtdCelulasVivas(grid);
     printf("Condicao incial: %d\n", qtd);
 
-    clock_t start, end;
-
-    struct timeval inicio, final2;
-    int tmili;
-
-    start = clock();
+    //start = clock();
 
     gettimeofday(&inicio, NULL);
 
@@ -152,18 +149,15 @@ int main(void)
     }
 
     gettimeofday(&final2, NULL);
-    tmili = (int)(1000 * (final2.tv_sec - inicio.tv_sec) + (final2.tv_usec - inicio.tv_usec) / 1000);
-
-    printf("tempo decorrido: %d milisegundos\n", tmili);
-
-    printf("tempo decorrido tv_sec: %d\n", (int)(final2.tv_sec - inicio.tv_sec));
-
-    printf("tempo decorrido tv_usec: %d\n", (int)(final2.tv_usec - inicio.tv_usec));
-
-    printf("Time elapsed: %f\n", ((double)clock() - start) / CLOCKS_PER_SEC);
 
     qtd = qtdCelulasVivas(grid);
     printf("Geracao %d: %d\n", i, qtd);
+
+    tmili = (int)(1000 * (final2.tv_sec - inicio.tv_sec) + (final2.tv_usec - inicio.tv_usec) / 1000);
+    printf("tempo decorrido: %d milisegundos\n", tmili);
+    // printf("tempo decorrido tv_sec: %d\n", (int)(final2.tv_sec - inicio.tv_sec));
+    // printf("tempo decorrido tv_usec: %d\n", (int)(final2.tv_usec - inicio.tv_usec));
+    // printf("Time elapsed: %f\n", ((double)clock() - start) / CLOCKS_PER_SEC);
 
     return 0;
 }

@@ -6,7 +6,7 @@
 
 #define N 2050 // tabuleiro 2048x2048 + duas bordas adicionais para facilitar o cálculo da borda infinita
 #define SRAND_VALUE 1985
-#define THREADS 4 // numero de threads
+#define THREADS 8 // numero de threads
 
 int **alocarMatriz()
 {
@@ -102,15 +102,11 @@ int qtdCelulasVivas(int **matriz)
 {
     int i, j, soma;
     soma = 0;
-#pragma omp parallel private(i, j) shared(matriz) num_threads(THREADS) reduction(+:soma)
+    for (i = 1; i < N - 1; i++)
     {
-    #pragma omp for
-        for (i = 1; i < N - 1; i++)
+        for (j = 1; j < N - 1; j++)
         {
-            for (j = 1; j < N - 1; j++)
-            {
-                soma += matriz[i][j];
-            }
+            soma += matriz[i][j];
         }
     }
     return soma;
@@ -133,7 +129,7 @@ int main(void)
 {
     int **grid;
     int **newGrid;
-    int i, qtd, th_id;
+    int i, qtd, th_id, tmili;
     double start, end;
 
     grid = alocarMatriz();
@@ -141,10 +137,10 @@ int main(void)
 
     iniciaTabuleiro(grid);
 
-    start = omp_get_wtime();
-
     qtd = qtdCelulasVivas(grid);
     printf("Condicao incial: %d\n", qtd);
+
+    start = omp_get_wtime();
 
 #pragma omp parallel private(i) shared(grid, newGrid) num_threads(THREADS)
     {
@@ -155,11 +151,13 @@ int main(void)
         }
     }
 
-    qtd = qtdCelulasVivas(grid);
-    printf("Geracao %d: %d\n", i, qtd);
-
     end = omp_get_wtime();
-    printf(" took %f seconds.\n", end - start);
+
+    qtd = qtdCelulasVivas(grid);
+    printf("Geracao 2000: %d\n", qtd);
+
+    tmili = (int)((end - start) * 1000);
+    printf("tempo decorrido: %d milisegundos\n", tmili);
 
     return 0;
 }
