@@ -5,17 +5,17 @@
 #include <time.h>
 #include <sys/time.h>
 
-#define N 10 // tabuleiro 2048x2048 + duas bordas adicionais para facilitar o cálculo da borda infinita
+#define N 2048 // tabuleiro 2048x2048 + duas bordas adicionais para facilitar o cálculo da borda infinita
 #define SRAND_VALUE 1985
 
-int **alocarMatriz()
+int **alocarMatriz(int linhas)
 {
     int i, j;
-    int **matriz = (int **)malloc(N * sizeof(int *));
-    for (i = 0; i < N; i++)
+    int **matriz = (int **)malloc(linhas * sizeof(int *));
+    for (i = 0; i < linhas; i++)
     {
-        matriz[i] = (int *)malloc(N * sizeof(int));
-        for (j = 0; j < N; j++)
+        matriz[i] = (int *)malloc((N + 2) * sizeof(int));
+        for (j = 0; j < N + 2; j++)
         {
             matriz[i][j] = 0;
         }
@@ -23,69 +23,79 @@ int **alocarMatriz()
     return matriz;
 }
 
-void inicializaBordas(int **matriz)
+void imprimeMatriz(int **matriz, int linhas)
 {
-    int i;
-    //Inicializa canteiros
-    matriz[0][0] = matriz[N - 2][N - 2];
-    matriz[0][N - 1] = matriz[N - 2][1];
-    matriz[N - 1][0] = matriz[1][N - 2];
-    matriz[N - 1][N - 1] = matriz[1][1];
-
-    for (i = 1; i < N - 1; i++)
+    int i, j;
+    for (i = 0; i < linhas; i++)
     {
-        //Inicializa bordas verticais
-        matriz[i][0] = matriz[i][N - 2];
-        matriz[i][N - 1] = matriz[i][1];
-
-        //Inicializa bordas horizontais
-        matriz[0][i] = matriz[N - 2][i];
-        matriz[N - 1][i] = matriz[1][i];
+        printf("\n");
+        for (j = 0; j < N + 2; j++)
+        {
+            printf("%d ", matriz[i][j]);
+        }
     }
 }
 
-void iniciaTabuleiro(int **matriz, int qtdProcessos, int rank)
+void inicializaFronteiras(int **matriz, int qtdProcessos)
+{
+    int j;
+
+    if (qtdProcessos == 1)
+    {
+        for (j = 0; j < N + 2; j++)
+        {
+            // Inicializa bordas horizontais para 1 processo apenas
+            matriz[0][j] = matriz[N][j];
+            matriz[N + 1][j] = matriz[1][j];
+        }
+    }
+}
+
+void iniciaTabuleiro(int **matriz, int qtdProcessos, int rank, int linhas)
 {
     int i, j, inicio, fim, divisao;
-    srand(1985);
 
-    divisao = (N - 2) / qtdProcessos;
-    inicio = ((rank + 1) * divisao) - divisao + 1;
-    fim = (rank + 1) * divisao;
-
-    for (i = inicio; i <= fim; i++)
+    for (i = 1; i < linhas - 1; i++)
     {
-        for (j = 1; j < N - 1; j++)
+        for (j = 1; j <= N; j++)
         {
             matriz[i][j] = rand() % 2;
             //printf("%d", rand() % 2);
             //printf("%d", matriz[i][j]);
         }
-        matriz[i][0] = matriz[i][N - 2];
-        matriz[i][N - 1] = matriz[i][1];
+        // Inicializa bordas verticais
+        matriz[i][0] = matriz[i][N];
+        matriz[i][N + 1] = matriz[i][1];
     }
 
-    if (rank == 0)
-    {
-        MPI_Send(&matriz[1][0], (N - 1), MPI_INT, (qtdProcessos - 1), 100, MPI_COMM_WORLD);
-        MPI_Recv(&matriz[0][0], (N - 1), MPI_INT, (qtdProcessos - 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
-    else if (rank == (qtdProcessos - 1))
-    {
-        MPI_Recv(&matriz[N - 1][0], (N - 1), MPI_INT, 0, 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Send(&matriz[N - 1][0], (N - 1), MPI_INT, 0, 100, MPI_COMM_WORLD);
-    }
+    inicializaFronteiras(matriz, qtdProcessos);
 
-    if (rank != (qtdProcessos - 1))
-    {
-        MPI_Send(&matriz[fim][0], (N - 1), MPI_INT, (rank + 1), 100, MPI_COMM_WORLD);
-        MPI_Recv(&matriz[fim + 1][0], (N - 1), MPI_INT, (rank + 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
-    if (rank != 0)
-    {
-        MPI_Recv(&matriz[inicio - 1][0], (N - 1), MPI_INT, (rank - 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Send(&matriz[inicio][0], (N - 1), MPI_INT, (rank - 1), 100, MPI_COMM_WORLD);
-    }
+    // else
+    // { // Inicializa bordas horizontais para o processo 0
+    //     // Não vai funcionar pq não sabemos a ordem em que os processos estão preenchendo a matriz
+    //     if (rank == 0)
+    //     {
+    //         MPI_Send(&matriz[1][0], N, MPI_INT, (qtdProcessos - 1), 100, MPI_COMM_WORLD);
+    //         MPI_Recv(&matriz[0][0], N, MPI_INT, (qtdProcessos - 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //     }
+    //     // Inicializa bordas horizontais para o último processo
+    //     // else if (rank == (qtdProcessos - 1))
+    //     // {
+    //     //     MPI_Recv(&matriz[linhas - 1][0], N, MPI_INT, 0, 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //     //     MPI_Send(&matriz[linhas - 2][0], N, MPI_INT, 0, 100, MPI_COMM_WORLD);
+    //     // }
+
+    //     // if (rank != (qtdProcessos - 1))
+    //     // {
+    //     //     MPI_Send(&matriz[linhas - 2][0], N, MPI_INT, (rank + 1), 100, MPI_COMM_WORLD);
+    //     //     MPI_Recv(&matriz[linhas - 1][0], N, MPI_INT, (rank + 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //     // }
+    //     // if (rank != 0)
+    //     // {
+    //     //     MPI_Recv(&matriz[inicio - 1][0], N, MPI_INT, (rank - 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //     //     MPI_Send(&matriz[inicio][0], N, MPI_INT, (rank - 1), 100, MPI_COMM_WORLD);
+    //     // }
+    // }
 
     //inicializaBordas(matriz);
 }
@@ -96,26 +106,31 @@ int getNeighbors(int **grid, int i, int j)
     return qtdVizinhos;
 }
 
-void atualizaGrid(int **grid, int **newGrid)
+void atualizaGrid(int **grid, int **newGrid, int linhas, int qtdProcessos)
 {
     int i, j;
-    for (i = 0; i < N; i++)
+
+    for (i = 0; i < linhas; i++)
     {
-        for (j = 0; j < N; j++)
+
+        for (j = 0; j < N + 2; j++)
         {
             grid[i][j] = newGrid[i][j];
             newGrid[i][j] = 0;
         }
+        // Inicializa bordas verticais
+        grid[i][0] = grid[i][N];
+        grid[i][N + 1] = grid[i][1];
     }
-    inicializaBordas(grid);
+    inicializaFronteiras(grid, qtdProcessos);
 }
 
-void proximaGeracao(int **grid, int **newGrid, int processId)
+void proximaGeracao(int **grid, int **newGrid, int linhas)
 {
     int i, j, vizinhos;
-    for (i = 1; i < N - 1; i++)
+    for (i = 1; i < linhas - 1; i++)
     {
-        for (j = 1; j < N - 1; j++)
+        for (j = 1; j <= N; j++)
         {
             vizinhos = getNeighbors(grid, i, j);
 
@@ -127,13 +142,13 @@ void proximaGeracao(int **grid, int **newGrid, int processId)
     }
 }
 
-int qtdCelulasVivas(int **matriz)
+int qtdCelulasVivas(int **matriz, int linhas)
 {
     int i, j, soma;
     soma = 0;
-    for (i = 1; i < N - 1; i++)
+    for (i = 1; i < linhas - 1; i++)
     {
-        for (j = 1; j < N - 1; j++)
+        for (j = 1; j <= N; j++)
         {
             soma += matriz[i][j];
         }
@@ -141,67 +156,77 @@ int qtdCelulasVivas(int **matriz)
     return soma;
 }
 
-void imprimeMatriz(int **matriz)
-{
-    int i, j;
-    for (i = 0; i < N; i++)
-    {
-        printf("\n");
-        for (j = 0; j < N; j++)
-        {
-            printf("%d ", matriz[i][j]);
-        }
-    }
-}
-
 int main(int argc, char *argv[])
 {
     int rank;         /* rank dos processos */
     int qtdProcessos; /* Número de processos */
-
+    int linhas;
     int **grid;
     int **newGrid;
+    int **finalGrid;
     int i, qtd;
     //clock_t start, end;
     struct timeval inicio, final2;
     int tmili;
 
+    srand(1985);
+
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &qtdProcessos);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    grid = alocarMatriz();
-    newGrid = alocarMatriz();
+    linhas = (N / qtdProcessos) + 2;
 
-    iniciaTabuleiro(grid, qtdProcessos, rank);
+    grid = alocarMatriz(linhas);
+    newGrid = alocarMatriz(linhas);
 
-    imprimeMatriz(grid);
+    // usado quando temos o MPI_Gather
+    // if (rank == 0)
+    // {
+    //     finalGrid = (int **)malloc(6 * sizeof(int));
+    //     finalGrid[0] = (int *)malloc(18 * sizeof(int));
+    //     finalGrid[1] = (int *)malloc(18 * sizeof(int));
+    //     //finalGrid = alocarMatriz(N);
+    // }
 
-    MPI_Finalize();
+    iniciaTabuleiro(grid, qtdProcessos, rank, linhas);
 
-    // qtd = qtdCelulasVivas(grid);
-    // printf("Condicao incial: %d\n", qtd);
+    //imprimeMatriz(grid, linhas);
+
+    //MPI_Gather(grid[1], N, MPI_INT, finalGrid[0], N, MPI_INT, 0, MPI_COMM_WORLD);
+    //MPI_Gather(grid[2], N, MPI_INT, finalGrid[1], N, MPI_INT, 0, MPI_COMM_WORLD);
+
+    qtd = qtdCelulasVivas(grid, linhas);
+    printf("Condicao incial: %d\n", qtd);
 
     // //start = clock();
 
-    // gettimeofday(&inicio, NULL);
+    gettimeofday(&inicio, NULL);
 
-    // for (i = 0; i < 2000; i++)
-    // {
-    //     proximaGeracao(grid, newGrid, rank);
-    //     atualizaGrid(grid, newGrid);
-    // }
+    for (i = 0; i < 2000; i++)
+    {
+        proximaGeracao(grid, newGrid, linhas);
+        atualizaGrid(grid, newGrid, linhas, qtdProcessos);
+
+        // printf("\n newGrid");
+        // imprimeMatriz(newGrid, linhas);
+        // printf("\n grid");
+        // imprimeMatriz(grid, linhas);
+
+        // qtd = qtdCelulasVivas(grid, linhas);
+        // printf("Geracao %d: %d\n", i + 1, qtd);
+    }
 
     // gettimeofday(&final2, NULL);
 
-    // qtd = qtdCelulasVivas(grid);
-    // printf("Geracao %d: %d\n", i, qtd);
+    qtd = qtdCelulasVivas(grid, linhas);
+    printf("Geracao %d: %d\n", i, qtd);
 
     // tmili = (int)(1000 * (final2.tv_sec - inicio.tv_sec) + (final2.tv_usec - inicio.tv_usec) / 1000);
     // printf("tempo decorrido: %d milisegundos\n", tmili);
     // // printf("tempo decorrido tv_sec: %d\n", (int)(final2.tv_sec - inicio.tv_sec));
     // // printf("tempo decorrido tv_usec: %d\n", (int)(final2.tv_usec - inicio.tv_usec));
     // // printf("Time elapsed: %f\n", ((double)clock() - start) / CLOCKS_PER_SEC);
-
+    MPI_Finalize();
     return 0;
 }
