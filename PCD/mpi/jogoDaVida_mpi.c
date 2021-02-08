@@ -1,5 +1,8 @@
+// Jogo da Vida em MPI
+// Para compilar: mpicc -o jogo jogoDaVida_mpi.c -O3
+// Para executar: mpiexec -np 4 ./jogo
+// -np : Numero de processos
 #include <stdio.h>
-#include <math.h>
 #include <mpi.h>
 #include <stdlib.h>
 #include <time.h>
@@ -26,7 +29,7 @@ int **alocarMatriz(int linhas)
 void imprimeMatriz(int **matriz, int rank, int linhas)
 {
     int i, j;
-    if (rank == 1)
+    if (rank == 0)
     {
         for (i = 0; i < linhas; i++)
         {
@@ -60,7 +63,7 @@ void inicializaFronteiras(int **matriz, int qtdProcessos, int rank, int linhas)
             MPI_Send(&matriz[1][0], N + 2, MPI_INT, (qtdProcessos - 1), 100, MPI_COMM_WORLD);
             MPI_Recv(&matriz[0][0], N + 2, MPI_INT, (qtdProcessos - 1), 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
-        // Inicializa bordas horizontais para o último processo
+        // Inicializa bordas horizontais para o ultimo processo
         else if (rank == (qtdProcessos - 1))
         {
             MPI_Recv(&matriz[linhas - 1][0], N + 2, MPI_INT, 0, 100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -84,12 +87,14 @@ void iniciaTabuleiro(int **matriz, int qtdProcessos, int rank, int linhas)
 {
     int i, j, limite;
 
+    // Descartando os valores aleatorios que pertencem a matrizes dos processos anteriores
     limite = rank * (linhas - 2) * N;
     for (i = 0; i < limite; i++)
     {
         rand() % 2;
     }
 
+    // Atribuindo valores aleatorios a matriz do processo atual
     for (i = 1; i < linhas - 1; i++)
     {
         for (j = 1; j <= N; j++)
@@ -101,7 +106,6 @@ void iniciaTabuleiro(int **matriz, int qtdProcessos, int rank, int linhas)
         matriz[i][N + 1] = matriz[i][1];
     }
     inicializaFronteiras(matriz, qtdProcessos, rank, linhas);
-    //imprimeMatriz(matriz, rank, linhas);
 }
 
 int getNeighbors(int **grid, int i, int j)
@@ -116,7 +120,6 @@ void atualizaGrid(int **grid, int **newGrid, int linhas, int qtdProcessos, int r
 
     for (i = 0; i < linhas; i++)
     {
-
         for (j = 0; j < N + 2; j++)
         {
             grid[i][j] = newGrid[i][j];
@@ -162,90 +165,69 @@ int qtdCelulasVivas(int **matriz, int linhas)
 
 int main(int argc, char *argv[])
 {
-    int rank;         /* rank dos processos */
-    int qtdProcessos; /* Número de processos */
+    int rank;         // Rank dos processos
+    int qtdProcessos; // Numero de processos
     int linhas;
     int **grid;
     int **newGrid;
-    int **finalGrid;
     int i;
     int *qtd, *vivas;
-    //clock_t start, end;
     struct timeval inicio, final2;
     int tmili;
 
-    srand(1985);
+    srand(SRAND_VALUE);
     qtd = (int *)malloc(sizeof(int));
     vivas = (int *)malloc(sizeof(int));
+
+    gettimeofday(&inicio, NULL);
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &qtdProcessos);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // Adiciona duas linhas para facilitar o cálculo da borda infinita e fronteiras
+    // Numero de linhas da matriz de cada processo
     linhas = (N / qtdProcessos) + 2;
 
     grid = alocarMatriz(linhas);
     newGrid = alocarMatriz(linhas);
 
-    // usado quando temos o MPI_Gather
-    // if (rank == 0)
-    // {
-    //     finalGrid = (int **)malloc(6 * sizeof(int));
-    //     finalGrid[0] = (int *)malloc(18 * sizeof(int));
-    //     finalGrid[1] = (int *)malloc(18 * sizeof(int));
-    //     //finalGrid = alocarMatriz(N);
-    // }
-
+    // Inicia a matriz de cada processo com valores aleatórios
     iniciaTabuleiro(grid, qtdProcessos, rank, linhas);
 
-    //imprimeMatriz(grid, linhas);
-
-    //MPI_Gather(grid[1], N, MPI_INT, finalGrid[0], N, MPI_INT, 0, MPI_COMM_WORLD);
-    //MPI_Gather(grid[2], N, MPI_INT, finalGrid[1], N, MPI_INT, 0, MPI_COMM_WORLD);
-
+    // Quantidade de celulas vivas na matriz inicial de cada processo
     qtd[0] = qtdCelulasVivas(grid, linhas);
 
+    // Soma das celulas vivas de todos os processos
     MPI_Reduce(qtd, vivas, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
+    // Apenas o processo 0 tem a informacao do total de celulas vivas
     if (rank == 0)
         printf("Condicao incial: %d\n", vivas[0]);
 
-    // // //start = clock();
-
-    // gettimeofday(&inicio, NULL);
-
+    // Calculo da proxima geracao e copia da matriz gerada (newGrid) para a matriz original (grid)
     for (i = 0; i < 2000; i++)
     {
         proximaGeracao(grid, newGrid, linhas);
         atualizaGrid(grid, newGrid, linhas, qtdProcessos, rank);
-
-        // printf("\n newGrid");
-        // imprimeMatriz(newGrid, linhas);
-        // printf("\n grid");
-        // imprimeMatriz(grid, linhas);
-
-        // qtd = qtdCelulasVivas(grid, linhas);
-        // printf("Geracao %d: %d\n", i + 1, qtd);
     }
 
-    // // gettimeofday(&final2, NULL);
-
+    // Quantidade de celulas vivas na matriz final de cada processo
     qtd[0] = qtdCelulasVivas(grid, linhas);
 
+    // Soma das celulas vivas de todos os processos
     MPI_Reduce(qtd, vivas, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
+    // Apenas o processo 0 tem a informacao do total de celulas vivas
     if (rank == 0)
         printf("Geracao %d: %d\n", i, vivas[0]);
 
-    // qtd = qtdCelulasVivas(grid, linhas);
-    // printf("Geracao %d: %d\n", i, qtd);
+    gettimeofday(&final2, NULL);
+    tmili = (int)(1000 * (final2.tv_sec - inicio.tv_sec) + (final2.tv_usec - inicio.tv_usec) / 1000);
 
-    // tmili = (int)(1000 * (final2.tv_sec - inicio.tv_sec) + (final2.tv_usec - inicio.tv_usec) / 1000);
-    // printf("tempo decorrido: %d milisegundos\n", tmili);
-    // // printf("tempo decorrido tv_sec: %d\n", (int)(final2.tv_sec - inicio.tv_sec));
-    // // printf("tempo decorrido tv_usec: %d\n", (int)(final2.tv_usec - inicio.tv_usec));
-    // // printf("Time elapsed: %f\n", ((double)clock() - start) / CLOCKS_PER_SEC);
+    if (rank == 0)
+        printf("tempo decorrido: %d milisegundos\n", tmili);
+
     MPI_Finalize();
+
     return 0;
 }
