@@ -1,3 +1,6 @@
+// Jogo da Vida em OpenMP
+// Para compilar: gcc -fopenmp -o openmp openmp.c -O3
+// Para executar: ./openmp
 #include <stdio.h>
 #include <omp.h>
 #include <stdlib.h>
